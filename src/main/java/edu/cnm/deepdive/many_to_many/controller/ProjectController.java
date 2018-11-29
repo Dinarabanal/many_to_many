@@ -79,9 +79,22 @@ public void delete(@PathVariable("projectId") long projectId) {
     studentRepository.save(student);
     return ResponseEntity.created(project.getHref()).body(project);
 
-
   }
 
+  @DeleteMapping(value = "{projectId}/students/{studentId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void deleteStudent(@PathVariable("projectId") long projectId,
+      @PathVariable("studentId") long studentId) {
+    Project project = get(projectId);
+    Student student = studentRepository.findById(studentId).get();
+    if (project.getStudents().remove(student)) {
+      projectRepository.save(project);
+    }else{
+      throw new NoSuchElementException();
+
+    }
+
+  }
 @ResponseStatus(value = HttpStatus.NOT_FOUND, reason = "Resource not found")
   @ExceptionHandler(NoSuchElementException.class)
   public void notFound(){

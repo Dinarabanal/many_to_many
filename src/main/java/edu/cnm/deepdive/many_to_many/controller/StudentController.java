@@ -7,7 +7,6 @@ import edu.cnm.deepdive.many_to_many.model.entity.Project;
 import edu.cnm.deepdive.many_to_many.model.entity.Student;
 import java.util.List;
 import java.util.NoSuchElementException;
-import javax.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.ExposesResourceFor;
 import org.springframework.http.HttpStatus;
@@ -53,23 +52,48 @@ public class StudentController {
   }
 
   @GetMapping(value = "{studentId}", produces = MediaType.APPLICATION_JSON_VALUE)
-  public Project get(@PathVariable("studentId") long projectId) {
-    return projectRepository.findById(projectId).get();
+  public Student get(@PathVariable("studentId") long projectId) {
+    return studentRepository.findById(projectId).get();
   }
 
-  @Transactional
   @DeleteMapping(value = "{studentId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void delete(@PathVariable("studentId") long studentId) {
-    Student student = get(studentId);
-    List <Project> projects = student.getProjects();
-    for (Project project : projects) {
-     project.getStudents().remove(student);
-    }
-    projectRepository.saveAll(projects);
-    StudentRepository.delete(student);
+   studentRepository.deleteById(studentId);
 
   }
+
+
+  @GetMapping(value = "{studentId}/projects", produces = MediaType.APPLICATION_JSON_VALUE)
+  public List<Project>projectList(@PathVariable("studentId") long studentId) {
+    return get(studentId).getProjects();
+
+  }
+
+  @PostMapping(value = "{studentId}/projects", consumes = MediaType.APPLICATION_JSON_VALUE,
+      produces = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<Project> postProject(@PathVariable("studentId") long studentId,
+      @RequestBody Project partialProject) {
+    Project project = projectRepository.findById(partialProject.getId()).get();
+    Student student = get(studentId);
+    student.getProjects().add(project);
+    studentRepository.save(student);
+    return ResponseEntity.created(project.getHref()).body(project);
+
+  }
+
+  @DeleteMapping(value = "{studentId}/projects/{projectId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void deleteProject(@PathVariable("studentId")long studentId, @PathVariable("projectId") long projectId){
+    Student student = get(studentId);
+    Project project = projectRepository.findById(projectId).get();
+    if(student.getProjects().remove(project)){
+      studentRepository.save(student);
+    }else {
+      throw new NoSuchElementException();
+    }
+  }
+
 
   @ResponseStatus(value = HttpStatus.NOT_FOUND, reason = "Resource not found")
   @ExceptionHandler(NoSuchElementException.class)
